@@ -1,0 +1,73 @@
+	public static {{m.returnType}} {{m.name}}({% for inParameter in m.inParameters %}{% if loop.first == false %}, {{inParameter.javaType}} {{inParameter.name}}{% else %}{{inParameter.javaType}} {{inParameter.name}}{% endif %}{% endfor %}) throws SQLException
+	{
+		if (logger.isLoggable(Level.FINE))
+			logger.fine(String.format("Procedure call: [{{m.name}}], Parameters: %s",
+					{% for inParameter in m.inParameters %}
+					    {% if loop.first == false %}+ ", {{inParameter.name}} [" + {{inParameter.name}} + "] {{inParameter.javaType}}"{% else %}"{{inParameter.name}} [" + {{inParameter.name}} + "] {{inParameter.javaType}}"{% endif %}{% endfor %}
+					));
+		StopWatch timer = new StopWatch();
+		timer.start();
+
+		ResultSet rs = null;
+		try (Connection conn = ConnOwner.getConnection())
+		{
+			CallableStatement cStmt = conn.prepareCall("{call {{m.name}}({% for x in m.inParameters%}{% if loop.first == true %}?{% else %}, ?{% endif %}{% endfor %})}");
+
+{% for inParameter in m.inParameters %}
+            if ({{inParameter.name}} == null)
+                cStmt.setNull({{inParameter.position}}, {{inParameter.typeFromTypes}});
+            else
+                cStmt.set{{inParameter.callableStatementType}}({{inParameter.position}}, {{inParameter.callableStatementSetParameter}});
+{% endfor %}
+			boolean hadResults = cStmt.execute();
+			{{m.returnType}} myItem = null;
+
+			while (hadResults)
+			{
+				rs = cStmt.getResultSet();
+				if (rs.next())
+				{
+					myItem = new {{m.returnType}}();
+{% if m.hasOutParameter %}{% if m.firstOutParameter.adHoc == false %}{% for parameter in m.customTypeTable.columns %}
+					myItem.set{{parameter.nameCapitalized}}({{parameter.resultSetTypeGetter}});
+					if (rs.wasNull()) myItem.set{{parameter.nameCapitalized}}(null);
+                {% endfor %}
+{% else %}
+                    // no params :(
+{% endif %}{% endif %}
+				}
+				else
+				{
+					hadResults = false;
+				}
+			}
+			timer.stop();
+			logger.info(String.format("Call to: {{m.name}} [time: %s]", timer.getTime()));
+			return myItem;
+		}
+		catch (SQLException ex)
+		{
+			logger.log(Level.SEVERE, "Call to: {{m.name}} resulted in MySqlException:" + ex.getMessage());
+			System.out.println("Error " + ex.getErrorCode() + " has occurred: " + ex.getMessage());
+			ex.printStackTrace();
+			throw ex;
+		}
+		catch (Exception e)
+		{
+			logger.log(Level.SEVERE, "Call to: {{m.name}} resulted in Exception:" + e.getMessage());
+			e.printStackTrace();
+			throw e;
+		}
+		finally
+		{
+			try
+			{
+				if (rs != null && !rs.isClosed())
+					rs.close();
+			}
+			catch (SQLException e)
+			{
+				e.printStackTrace();
+			}
+		}
+	}

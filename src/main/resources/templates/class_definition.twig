@@ -1,0 +1,9 @@
+{{accessModifier}} class {{className}} {% if extendsClass is not null %}extends {{extendsClass}}{% endif %}
+{
+{% if addLogger is not null %}{% if addLogger==true %}
+	protected static Logger logger = Logger.getLogger({{className}}.class.getCanonicalName());
+{% endif %}{% endif %}
+{% include "class_fields.twig" %}
+{% include "class_constructors.twig" %}
+{% include "class_methods.twig" %}
+}

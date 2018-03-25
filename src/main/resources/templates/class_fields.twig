@@ -1,0 +1,18 @@
+/** BEGIN class fields */
+{% if parameters is not null %}
+	{% for parameter in parameters %}
+		private {{parameter.javaType}} {{parameter.name}};
+		public {{parameter.javaType}} get{{parameter.nameCapitalized}}()
+		{
+			return this.{{parameter.name}};
+		}
+		public void set{{parameter.nameCapitalized}}({{parameter.javaType}} _{{parameter.name}})
+		{
+			this.{{parameter.name}} = _{{parameter.name}};
+		}
+
+	{% endfor %}
+{% else %}
+	// no parameters
+{% endif %}
+/** END class fields */
